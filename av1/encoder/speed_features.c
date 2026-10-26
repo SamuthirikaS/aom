@@ -1096,6 +1096,7 @@ static void set_good_speed_feature_framesize_dependent(
 
 static void set_good_speed_features_framesize_independent(
     const AV1_COMP *const cpi, SPEED_FEATURES *const sf, int speed) {
+    # dummy comment
   const AV1_COMMON *const cm = &cpi->common;
   const GF_GROUP *const gf_group = &cpi->ppi->gf_group;
   const int boosted = frame_is_boosted(cpi);
