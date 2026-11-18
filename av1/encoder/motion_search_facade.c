@@ -306,10 +306,10 @@ void av1_single_motion_search(const AV1_COMP *const cpi, MACROBLOCK *x,
             &full_ms_params, cpi, x, bsize, &ref_mv, smv.as_fullmv,
             src_search_site_cfg, search_method, fine_search_interval);
 
-        const int thissme =
-            av1_full_pixel_search(smv.as_fullmv, &full_ms_params, step_param,
-                                  cond_cost_list(cpi, cost_list), &this_best_mv,
-                                  &this_mv_stats, &this_second_best_mv);
+        const int thissme = av1_full_pixel_search(
+            smv.as_fullmv, &full_ms_params, step_param,
+            cond_cost_list_for_case(cpi, cost_list, SUBPEL_SEARCH_SINGLE),
+            &this_best_mv, &this_mv_stats, &this_second_best_mv);
 
         if (thissme < bestsme) {
           bestsme = thissme;
@@ -405,8 +405,9 @@ void av1_single_motion_search(const AV1_COMP *const cpi, MACROBLOCK *x,
     int dis; /* TODO: use dis in distortion calculation later. */
 
     SUBPEL_MOTION_SEARCH_PARAMS ms_params;
-    av1_make_default_subpel_ms_params(&ms_params, cpi, x, bsize, &ref_mv,
-                                      cost_list);
+    av1_make_default_subpel_ms_params(&ms_params, cpi, x, bsize, &ref_mv, NULL);
+    ms_params.cost_list =
+        cond_cost_list_for_case(cpi, cost_list, SUBPEL_SEARCH_SINGLE);
     MV subpel_start_mv = get_mv_from_fullmv(&best_mv->as_fullmv);
     assert(av1_is_subpelmv_in_range(&ms_params.mv_limits, subpel_start_mv));
 
@@ -416,9 +417,10 @@ void av1_single_motion_search(const AV1_COMP *const cpi, MACROBLOCK *x,
           const int try_second = second_best_mv.as_int != INVALID_MV &&
                                  second_best_mv.as_int != best_mv->as_int &&
                                  (mv_sf->disable_second_mv <= 1);
-          const int best_mv_var = mv_search_params->find_fractional_mv_step(
-              xd, cm, &ms_params, subpel_start_mv, &best_mv_stats,
-              &best_mv->as_mv, &dis, &x->pred_sse[ref], fractional_ms_list);
+          const int best_mv_var =
+              mv_search_params->find_fractional_mv_step[SUBPEL_SEARCH_SINGLE](
+                  xd, cm, &ms_params, subpel_start_mv, &best_mv_stats,
+                  &best_mv->as_mv, &dis, &x->pred_sse[ref], fractional_ms_list);
 
           if (try_second) {
             struct macroblockd_plane *p = xd->plane;
@@ -432,9 +434,11 @@ void av1_single_motion_search(const AV1_COMP *const cpi, MACROBLOCK *x,
             if (av1_is_subpelmv_in_range(&ms_params.mv_limits,
                                          subpel_start_mv)) {
               unsigned int sse;
-              const int this_var = mv_search_params->find_fractional_mv_step(
-                  xd, cm, &ms_params, subpel_start_mv, NULL, &this_best_mv,
-                  &dis, &sse, fractional_ms_list);
+              const int this_var =
+                  mv_search_params
+                      ->find_fractional_mv_step[SUBPEL_SEARCH_SINGLE](
+                          xd, cm, &ms_params, subpel_start_mv, NULL,
+                          &this_best_mv, &dis, &sse, fractional_ms_list);
 
               // If cpi->sf.mv_sf.disable_second_mv is 0 and both MVs are valid,
               // use actual rd cost to choose the better MV.
@@ -483,7 +487,7 @@ void av1_single_motion_search(const AV1_COMP *const cpi, MACROBLOCK *x,
             }
           }
         } else {
-          mv_search_params->find_fractional_mv_step(
+          mv_search_params->find_fractional_mv_step[SUBPEL_SEARCH_SINGLE](
               xd, cm, &ms_params, subpel_start_mv, &best_mv_stats,
               &best_mv->as_mv, &dis, &x->pred_sse[ref], NULL);
         }
@@ -725,16 +729,20 @@ int av1_joint_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
       }
       MV start_mv = get_mv_from_fullmv(&best_mv.as_fullmv);
       assert(av1_is_subpelmv_in_range(&ms_params.mv_limits, start_mv));
-      bestsme = cpi->mv_search_params.find_fractional_mv_step(
-          xd, cm, &ms_params, start_mv, NULL, &best_mv.as_mv, &dis, &sse, NULL);
+      bestsme =
+          cpi->mv_search_params.find_fractional_mv_step[SUBPEL_SEARCH_JOINT](
+              xd, cm, &ms_params, start_mv, NULL, &best_mv.as_mv, &dis, &sse,
+              NULL);
 
       if (try_second) {
         MV this_best_mv;
         MV subpel_start_mv = get_mv_from_fullmv(&second_best_mv.as_fullmv);
         if (av1_is_subpelmv_in_range(&ms_params.mv_limits, subpel_start_mv)) {
-          const int thissme = cpi->mv_search_params.find_fractional_mv_step(
-              xd, cm, &ms_params, subpel_start_mv, NULL, &this_best_mv, &dis,
-              &sse, NULL);
+          const int thissme =
+              cpi->mv_search_params
+                  .find_fractional_mv_step[SUBPEL_SEARCH_JOINT](
+                      xd, cm, &ms_params, subpel_start_mv, NULL, &this_best_mv,
+                      &dis, &sse, NULL);
           if (thissme < bestsme) {
             best_mv.as_mv = this_best_mv;
             bestsme = thissme;
@@ -869,9 +877,11 @@ int av1_compound_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
     ms_params.forced_stop = EIGHTH_PEL;
     MV start_mv = get_mv_from_fullmv(&best_mv.as_fullmv);
     assert(av1_is_subpelmv_in_range(&ms_params.mv_limits, start_mv));
-    bestsme = cpi->mv_search_params.find_fractional_mv_step(
-        xd, cm, &ms_params, start_mv, &best_mv_stats, &best_mv.as_mv, &dis,
-        &sse, NULL);
+    bestsme =
+        cpi->mv_search_params
+            .find_fractional_mv_step[SUBPEL_SEARCH_COMPOUND_SINGLE](
+                xd, cm, &ms_params, start_mv, &best_mv_stats, &best_mv.as_mv,
+                &dis, &sse, NULL);
   }
 
   // Restore the pointer to the first unscaled prediction buffer.
@@ -1071,9 +1081,10 @@ int_mv av1_simple_motion_search_sse_var(AV1_COMP *const cpi, MACROBLOCK *x,
                                      start_mv, src_search_sites, search_method,
                                      fine_search_interval);
 
-  bestsme = av1_full_pixel_search(start_mv, &full_ms_params, step_param,
-                                  cond_cost_list(cpi, cost_list),
-                                  &best_mv.as_fullmv, &best_mv_stats, NULL);
+  bestsme = av1_full_pixel_search(
+      start_mv, &full_ms_params, step_param,
+      cond_cost_list_for_case(cpi, cost_list, SUBPEL_SEARCH_SIMPLE),
+      &best_mv.as_fullmv, &best_mv_stats, NULL);
 
   const int use_subpel_search =
       bestsme < INT_MAX && !cpi->common.features.cur_frame_force_integer_mv &&
@@ -1086,15 +1097,16 @@ int_mv av1_simple_motion_search_sse_var(AV1_COMP *const cpi, MACROBLOCK *x,
     int not_used = 0;
 
     SUBPEL_MOTION_SEARCH_PARAMS ms_params;
-    av1_make_default_subpel_ms_params(&ms_params, cpi, x, bsize, &ref_mv,
-                                      cost_list);
+    av1_make_default_subpel_ms_params(&ms_params, cpi, x, bsize, &ref_mv, NULL);
+    ms_params.cost_list =
+        cond_cost_list_for_case(cpi, cost_list, SUBPEL_SEARCH_SIMPLE);
     // TODO(yunqing): integrate this into av1_make_default_subpel_ms_params().
     ms_params.forced_stop = mv_sf->simple_motion_subpel_force_stop;
 
     MV subpel_start_mv = get_mv_from_fullmv(&best_mv.as_fullmv);
     assert(av1_is_subpelmv_in_range(&ms_params.mv_limits, subpel_start_mv));
 
-    cpi->mv_search_params.find_fractional_mv_step(
+    cpi->mv_search_params.find_fractional_mv_step[SUBPEL_SEARCH_SIMPLE](
         xd, cm, &ms_params, subpel_start_mv, &best_mv_stats, &best_mv.as_mv,
         &not_used, &x->pred_sse[ref], NULL);
 

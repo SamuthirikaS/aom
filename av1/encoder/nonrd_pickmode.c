@@ -270,7 +270,7 @@ static int combined_motion_search(AV1_COMP *cpi, MACROBLOCK *x,
           xd, cm, &ms_params, subpel_start_mv, &best_mv_stats, &tmp_mv->as_mv,
           &dis, &x->pred_sse[ref], NULL);
     else
-      cpi->mv_search_params.find_fractional_mv_step(
+      cpi->mv_search_params.find_fractional_mv_step[SUBPEL_SEARCH_DEFAULT](
           xd, cm, &ms_params, subpel_start_mv, &best_mv_stats, &tmp_mv->as_mv,
           &dis, &x->pred_sse[ref], NULL);
     *rate_mv =
@@ -355,7 +355,7 @@ static int search_new_mv(AV1_COMP *cpi, MACROBLOCK *x,
     }
     MV start_mv = get_mv_from_fullmv(&best_mv.as_fullmv);
     assert(av1_is_subpelmv_in_range(&ms_params.mv_limits, start_mv));
-    cpi->mv_search_params.find_fractional_mv_step(
+    cpi->mv_search_params.find_fractional_mv_step[SUBPEL_SEARCH_DEFAULT](
         xd, cm, &ms_params, start_mv, NULL, &best_mv.as_mv, &dis,
         &x->pred_sse[ref_frame], NULL);
     this_ref_frm_newmv->as_int = best_mv.as_int;
