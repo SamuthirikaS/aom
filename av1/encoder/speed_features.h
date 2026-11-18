@@ -145,6 +145,21 @@ enum {
 } UENUM1BYTE(SUBPEL_SEARCH_METHOD);
 
 enum {
+  // Default sub-pel search used in TPL, temporal filter, and non-RD pickmode.
+  SUBPEL_SEARCH_DEFAULT = 0,
+  // Sub-pel search in av1_single_motion_search.
+  SUBPEL_SEARCH_SINGLE,
+  // Sub-pel search in av1_joint_motion_search.
+  SUBPEL_SEARCH_JOINT,
+  // Sub-pel search in av1_compound_single_motion_search.
+  SUBPEL_SEARCH_COMPOUND_SINGLE,
+  // Sub-pel search in av1_simple_motion_search_sse_var.
+  SUBPEL_SEARCH_SIMPLE,
+  // All sub-pel search cases.
+  SUBPEL_SEARCH_CASES
+} UENUM1BYTE(SUBPEL_SEARCH_CASE);
+
+enum {
   // Try the full image with different values.
   LPF_PICK_FROM_FULL_IMAGE,
   // Try the full image filter search with non-dual filter only.
@@ -892,7 +907,7 @@ typedef struct MV_SPEED_FEATURES {
   // logarithmic search that keeps stepping at 1/2 pixel units until
   // you stop getting a gain, and then goes on to 1/4 and repeats
   // the same process. Along the way it skips many diagonals.
-  SUBPEL_SEARCH_METHOD subpel_search_method;
+  SUBPEL_SEARCH_METHOD subpel_search_method[SUBPEL_SEARCH_CASES];
 
   // Maximum number of steps in logarithmic subpel search before giving up.
   int subpel_iters_per_step;

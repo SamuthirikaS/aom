@@ -2159,7 +2159,7 @@ typedef struct {
    * In MV unit test: av1_return_max_sub_pixel_mv
    *                  av1_return_min_sub_pixel_mv
    */
-  fractional_mv_step_fp *find_fractional_mv_step;
+  fractional_mv_step_fp *find_fractional_mv_step[SUBPEL_SEARCH_CASES];
   /*!
    * Search site configuration for full-pel MV search.
    * search_site_cfg[SS_CFG_SRC]: Used in tpl, rd/non-rd inter mode loop, simple
@@ -4246,17 +4246,31 @@ static inline int get_chessboard_index(int frame_index) {
   return frame_index & 0x1;
 }
 
+static inline const int *cond_cost_list_const_for_case(
+    const struct AV1_COMP *cpi, const int *cost_list,
+    SUBPEL_SEARCH_CASE search_case) {
+  const int use_cost_list =
+      cpi->sf.mv_sf.subpel_search_method[search_case] != SUBPEL_TREE &&
+      cpi->sf.mv_sf.use_fullpel_costlist;
+  return use_cost_list ? cost_list : NULL;
+}
+
 static inline const int *cond_cost_list_const(const struct AV1_COMP *cpi,
                                               const int *cost_list) {
-  const int use_cost_list = cpi->sf.mv_sf.subpel_search_method != SUBPEL_TREE &&
-                            cpi->sf.mv_sf.use_fullpel_costlist;
+  return cond_cost_list_const_for_case(cpi, cost_list, SUBPEL_SEARCH_DEFAULT);
+}
+
+static inline int *cond_cost_list_for_case(const struct AV1_COMP *cpi,
+                                           int *cost_list,
+                                           SUBPEL_SEARCH_CASE search_case) {
+  const int use_cost_list =
+      cpi->sf.mv_sf.subpel_search_method[search_case] != SUBPEL_TREE &&
+      cpi->sf.mv_sf.use_fullpel_costlist;
   return use_cost_list ? cost_list : NULL;
 }
 
 static inline int *cond_cost_list(const struct AV1_COMP *cpi, int *cost_list) {
-  const int use_cost_list = cpi->sf.mv_sf.subpel_search_method != SUBPEL_TREE &&
-                            cpi->sf.mv_sf.use_fullpel_costlist;
-  return use_cost_list ? cost_list : NULL;
+  return cond_cost_list_for_case(cpi, cost_list, SUBPEL_SEARCH_DEFAULT);
 }
 
 // Compression ratio of current frame.

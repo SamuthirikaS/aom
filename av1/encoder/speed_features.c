@@ -163,6 +163,15 @@ static inline void set_txfm_rd_gate_level(
     txfm_rd_gate_level[idx] = level;
 }
 
+// Set sub-pel search method for all sub-pel search cases.
+static inline void set_subpel_search_methods(
+    SUBPEL_SEARCH_METHOD subpel_search_method[SUBPEL_SEARCH_CASES],
+    SUBPEL_SEARCH_METHOD method) {
+  assert(method < SUBPEL_SEARCH_METHODS);
+  for (int idx = 0; idx < SUBPEL_SEARCH_CASES; idx++)
+    subpel_search_method[idx] = method;
+}
+
 static void set_allintra_speed_feature_framesize_dependent(
     const AV1_COMP *const cpi, SPEED_FEATURES *const sf, int speed) {
   const AV1_COMMON *const cm = &cpi->common;
@@ -469,7 +478,8 @@ static void set_allintra_speed_features_framesize_independent(
   }
 
   if (speed >= 4) {
-    sf->mv_sf.subpel_search_method = SUBPEL_TREE_PRUNED_MORE;
+    set_subpel_search_methods(sf->mv_sf.subpel_search_method,
+                              SUBPEL_TREE_PRUNED_MORE);
 
     sf->part_sf.simple_motion_search_prune_agg = SIMPLE_AGG_LVL4;
     sf->part_sf.simple_motion_search_reduce_search_steps = 4;
@@ -872,9 +882,15 @@ static void set_good_speed_feature_framesize_dependent(
     if (!is_720p_or_larger) {
       sf->mv_sf.disable_second_mv = 1;
       sf->mv_sf.auto_mv_step_size = 2;
+      sf->mv_sf.subpel_search_method[SUBPEL_SEARCH_JOINT] = SUBPEL_TREE;
+      sf->mv_sf.subpel_search_method[SUBPEL_SEARCH_COMPOUND_SINGLE] =
+          SUBPEL_TREE;
     } else {
       sf->mv_sf.disable_second_mv = boosted ? 0 : 2;
       sf->mv_sf.auto_mv_step_size = 1;
+      sf->mv_sf.subpel_search_method[SUBPEL_SEARCH_JOINT] = SUBPEL_TREE_PRUNED;
+      sf->mv_sf.subpel_search_method[SUBPEL_SEARCH_COMPOUND_SINGLE] =
+          SUBPEL_TREE_PRUNED;
     }
 
     if (!is_720p_or_larger) {
@@ -886,6 +902,8 @@ static void set_good_speed_feature_framesize_dependent(
   }
 
   if (speed >= 3) {
+    set_subpel_search_methods(sf->mv_sf.subpel_search_method,
+                              SUBPEL_TREE_PRUNED);
     sf->inter_sf.enable_fast_wedge_mask_search = 1;
     sf->inter_sf.skip_newmv_in_drl = 2;
     sf->inter_sf.skip_ext_comp_nearmv_mode = 1;
@@ -950,6 +968,8 @@ static void set_good_speed_feature_framesize_dependent(
   }
 
   if (speed >= 4) {
+    set_subpel_search_methods(sf->mv_sf.subpel_search_method,
+                              SUBPEL_TREE_PRUNED_MORE);
     sf->tx_sf.tx_type_search.winner_mode_tx_type_pruning = 2;
     sf->winner_mode_sf.enable_winner_mode_for_tx_size_srch = 1;
     if (is_720p_or_larger) {
@@ -1250,6 +1270,10 @@ static void set_good_speed_features_framesize_independent(
     sf->mv_sf.simple_motion_subpel_force_stop = QUARTER_PEL;
     sf->mv_sf.subpel_iters_per_step = 1;
     sf->mv_sf.reduce_search_range = 1;
+    if (cm->current_frame.pyramid_level > 3) {
+      sf->mv_sf.subpel_search_method[SUBPEL_SEARCH_SINGLE] = SUBPEL_TREE_PRUNED;
+    }
+    sf->mv_sf.subpel_search_method[SUBPEL_SEARCH_SIMPLE] = SUBPEL_TREE_PRUNED;
 
     // TODO(chiyotsai@google.com): We can get 10% speed up if we move
     // adaptive_rd_thresh to speed 1. But currently it performs poorly on some
@@ -1306,7 +1330,8 @@ static void set_good_speed_features_framesize_independent(
     sf->part_sf.simple_motion_search_rect_split = 1;
     sf->part_sf.prune_h_or_v_4part_using_sms_info = true;
 
-    sf->mv_sf.subpel_search_method = SUBPEL_TREE_PRUNED;
+    set_subpel_search_methods(sf->mv_sf.subpel_search_method,
+                              SUBPEL_TREE_PRUNED);
     sf->mv_sf.search_method = DIAMOND;
     sf->mv_sf.disable_second_mv = 2;
     sf->mv_sf.prune_mesh_search = PRUNE_MESH_SEARCH_LVL_1;
@@ -1368,7 +1393,8 @@ static void set_good_speed_features_framesize_independent(
   }
 
   if (speed >= 4) {
-    sf->mv_sf.subpel_search_method = SUBPEL_TREE_PRUNED_MORE;
+    set_subpel_search_methods(sf->mv_sf.subpel_search_method,
+                              SUBPEL_TREE_PRUNED_MORE);
 
     sf->gm_sf.prune_zero_mv_with_sse = 2;
     sf->gm_sf.downsample_level = 1;
@@ -1715,7 +1741,8 @@ static void set_rt_speed_feature_framesize_dependent(const AV1_COMP *const cpi,
          cpi->oxcf.frm_dim_cfg.width * cpi->oxcf.frm_dim_cfg.height <=
              640 * 360)) {
       sf->mv_sf.search_method = NSTEP;
-      sf->mv_sf.subpel_search_method = SUBPEL_TREE_PRUNED;
+      set_subpel_search_methods(sf->mv_sf.subpel_search_method,
+                                SUBPEL_TREE_PRUNED);
       sf->rt_sf.fullpel_search_step_param = 10;
       sf->rt_sf.reduce_mv_pel_precision_highmotion = 0;
       if (cm->width * cm->height <= 352 * 288)
@@ -1728,7 +1755,8 @@ static void set_rt_speed_feature_framesize_dependent(const AV1_COMP *const cpi,
       sf->rt_sf.reduce_mv_pel_precision_highmotion = 3;
       if (rtc_ref->non_reference_frame) {
         sf->rt_sf.nonrd_aggressive_skip = 1;
-        sf->mv_sf.subpel_search_method = SUBPEL_TREE_PRUNED_MORE;
+        set_subpel_search_methods(sf->mv_sf.subpel_search_method,
+                                  SUBPEL_TREE_PRUNED_MORE);
       }
     }
     if (speed <= 9 && cpi->svc.number_temporal_layers > 2 &&
@@ -1761,7 +1789,7 @@ static void set_rt_speed_feature_framesize_dependent(const AV1_COMP *const cpi,
     // For single layers RPS: bias/adjustment for recovery frame.
     if (cpi->ppi->rtc_ref.bias_recovery_frame) {
       sf->mv_sf.search_method = NSTEP;
-      sf->mv_sf.subpel_search_method = SUBPEL_TREE;
+      set_subpel_search_methods(sf->mv_sf.subpel_search_method, SUBPEL_TREE);
       sf->rt_sf.fullpel_search_step_param = 8;
       sf->rt_sf.nonrd_aggressive_skip = 0;
     }
@@ -1793,7 +1821,8 @@ static void set_rt_speed_feature_framesize_dependent(const AV1_COMP *const cpi,
       sf->rt_sf.skip_lf_screen = 1;
       sf->rt_sf.nonrd_prune_ref_frame_search = 3;
       sf->rt_sf.var_part_split_threshold_shift = 10;
-      sf->mv_sf.subpel_search_method = SUBPEL_TREE_PRUNED_MORE;
+      set_subpel_search_methods(sf->mv_sf.subpel_search_method,
+                                SUBPEL_TREE_PRUNED_MORE);
       sf->rt_sf.reduce_mv_pel_precision_lowcomplex = 1;
       sf->lpf_sf.cdef_pick_method = CDEF_PICK_FROM_Q;
       sf->rt_sf.nonrd_check_partition_merge_mode = 0;
@@ -1868,7 +1897,8 @@ static void set_rt_speed_feature_framesize_dependent(const AV1_COMP *const cpi,
     if (cpi->rc.high_source_sad && cpi->ppi->rtc_ref.non_reference_frame) {
       sf->rt_sf.use_idtx_nonrd = 0;
       sf->rt_sf.prefer_large_partition_blocks = 1;
-      sf->mv_sf.subpel_search_method = SUBPEL_TREE_PRUNED_MORE;
+      set_subpel_search_methods(sf->mv_sf.subpel_search_method,
+                                SUBPEL_TREE_PRUNED_MORE);
       sf->rt_sf.fullpel_search_step_param = 10;
     }
     sf->rt_sf.partition_direct_merging = 0;
@@ -2022,7 +2052,7 @@ static void set_rt_speed_features_framesize_independent(AV1_COMP *cpi,
   sf->mv_sf.use_accurate_subpel_search = USE_2_TAPS;
   sf->mv_sf.search_method = FAST_DIAMOND;
   sf->mv_sf.subpel_force_stop = EIGHTH_PEL;
-  sf->mv_sf.subpel_search_method = SUBPEL_TREE_PRUNED;
+  set_subpel_search_methods(sf->mv_sf.subpel_search_method, SUBPEL_TREE_PRUNED);
 
   for (int i = 0; i < TX_SIZES; ++i) {
     sf->intra_sf.intra_y_mode_mask[i] = INTRA_DC;
@@ -2228,7 +2258,8 @@ static void set_rt_speed_features_framesize_independent(AV1_COMP *cpi,
     sf->rt_sf.sse_early_term_inter_search = EARLY_TERM_IDX_4;
     sf->rt_sf.nonrd_prune_ref_frame_search = 3;
     sf->rt_sf.var_part_split_threshold_shift = 10;
-    sf->mv_sf.subpel_search_method = SUBPEL_TREE_PRUNED_MORE;
+    set_subpel_search_methods(sf->mv_sf.subpel_search_method,
+                              SUBPEL_TREE_PRUNED_MORE);
   }
   if (speed >= 11 && !frame_is_intra_only(cm) &&
       cpi->oxcf.tune_cfg.content == AOM_CONTENT_SCREEN) {
@@ -2354,7 +2385,7 @@ static inline void init_mv_sf(MV_SPEED_FEATURES *mv_sf) {
   mv_sf->simple_motion_subpel_force_stop = EIGHTH_PEL;
   mv_sf->subpel_force_stop = EIGHTH_PEL;
   mv_sf->subpel_iters_per_step = 2;
-  mv_sf->subpel_search_method = SUBPEL_TREE;
+  set_subpel_search_methods(mv_sf->subpel_search_method, SUBPEL_TREE);
   mv_sf->use_accurate_subpel_search = USE_8_TAPS;
   mv_sf->use_bsize_dependent_search_method = 0;
   mv_sf->use_fullpel_costlist = 0;
@@ -2657,16 +2688,21 @@ static fractional_mv_step_fp *const
 static void set_subpel_search_method(
     MotionVectorSearchParams *mv_search_params,
     unsigned int motion_vector_unit_test,
-    SUBPEL_SEARCH_METHOD subpel_search_method) {
-  assert(subpel_search_method <= SUBPEL_TREE_PRUNED_MORE);
-  mv_search_params->find_fractional_mv_step =
-      fractional_mv_search[subpel_search_method];
+    const SUBPEL_SEARCH_METHOD subpel_search_method[SUBPEL_SEARCH_CASES]) {
+  for (int idx = 0; idx < SUBPEL_SEARCH_CASES; idx++) {
+    assert(subpel_search_method[idx] <= SUBPEL_TREE_PRUNED_MORE);
+    mv_search_params->find_fractional_mv_step[idx] =
+        fractional_mv_search[subpel_search_method[idx]];
 
-  // This is only used in motion vector unit test.
-  if (motion_vector_unit_test == 1)
-    mv_search_params->find_fractional_mv_step = av1_return_max_sub_pixel_mv;
-  else if (motion_vector_unit_test == 2)
-    mv_search_params->find_fractional_mv_step = av1_return_min_sub_pixel_mv;
+    // This is only used in motion vector unit test.
+    if (motion_vector_unit_test == 1) {
+      mv_search_params->find_fractional_mv_step[idx] =
+          av1_return_max_sub_pixel_mv;
+    } else if (motion_vector_unit_test == 2) {
+      mv_search_params->find_fractional_mv_step[idx] =
+          av1_return_min_sub_pixel_mv;
+    }
+  }
 }
 
 void av1_set_speed_features_framesize_dependent(AV1_COMP *cpi, int speed) {
