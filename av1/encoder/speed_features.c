@@ -2385,6 +2385,10 @@ static inline void init_mv_sf(MV_SPEED_FEATURES *mv_sf) {
   mv_sf->simple_motion_subpel_force_stop = EIGHTH_PEL;
   mv_sf->subpel_force_stop = EIGHTH_PEL;
   mv_sf->subpel_iters_per_step = 2;
+  mv_sf->subpel_search_method = SUBPEL_TREE;
+mv_sf->prune_single_subpel_search = false;
+mv_sf->prune_comp_subpel_search = false;
+mv_sf->prune_simple_subpel_search = false;
   set_subpel_search_methods(mv_sf->subpel_search_method, SUBPEL_TREE);
   mv_sf->use_accurate_subpel_search = USE_8_TAPS;
   mv_sf->use_bsize_dependent_search_method = 0;

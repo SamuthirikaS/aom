@@ -117,6 +117,16 @@ static inline void get_mv_candidate_from_tpl(const AV1_COMP *const cpi,
   }
 }
 
+static inline fractional_mv_step_fp *get_subpel_search_fn(
+    const AV1_COMP *cpi, bool prune_subpel) {
+  if (prune_subpel &&
+      cpi->sf.mv_sf.subpel_search_method == SUBPEL_TREE &&
+      !cpi->oxcf.unit_test_cfg.motion_vector_unit_test) {
+    return av1_find_best_sub_pixel_tree_pruned;
+  }
+  return cpi->mv_search_params.find_fractional_mv_step;
+}
+
 void av1_single_motion_search(const AV1_COMP *const cpi, MACROBLOCK *x,
                               BLOCK_SIZE bsize, int ref_idx, int *rate_mv,
                               int search_range, inter_mode_info *mode_info,
