@@ -4246,17 +4246,31 @@ static inline int get_chessboard_index(int frame_index) {
   return frame_index & 0x1;
 }
 
-static inline const int *cond_cost_list_const(const struct AV1_COMP *cpi,
-                                              const int *cost_list) {
-  const int use_cost_list = cpi->sf.mv_sf.subpel_search_method != SUBPEL_TREE &&
-                            cpi->sf.mv_sf.use_fullpel_costlist;
-  return use_cost_list ? cost_list : NULL;
+static inline bool av1_use_fullpel_costlist(const struct AV1_COMP *cpi) {
+  return cpi->sf.mv_sf.subpel_search_method != SUBPEL_TREE &&
+         cpi->sf.mv_sf.use_fullpel_costlist;
 }
 
 static inline int *cond_cost_list(const struct AV1_COMP *cpi, int *cost_list) {
-  const int use_cost_list = cpi->sf.mv_sf.subpel_search_method != SUBPEL_TREE &&
-                            cpi->sf.mv_sf.use_fullpel_costlist;
-  return use_cost_list ? cost_list : NULL;
+  return av1_use_fullpel_costlist(cpi) ? cost_list : NULL;
+}
+
+static inline bool av1_use_fullpel_costlist(
+    const struct AV1_COMP *cpi, SUBPEL_SEARCH_METHOD subpel_search_method) {
+  return subpel_search_method != SUBPEL_TREE &&
+         cpi->sf.mv_sf.use_fullpel_costlist;
+}
+
+static inline int *cond_cost_list_for_method(
+    const struct AV1_COMP *cpi, int *cost_list,
+    SUBPEL_SEARCH_METHOD subpel_search_method) {
+  return av1_use_fullpel_costlist(cpi, subpel_search_method) ? cost_list : NULL;
+}
+
+static inline int *cond_cost_list(const struct AV1_COMP *cpi, int *cost_list) {
+  return cond_cost_list_for_method(
+      cpi, cost_list,
+      cpi->sf.mv_sf.subpel_search_method[SUBPEL_SEARCH_DEFAULT]);
 }
 
 // Compression ratio of current frame.
